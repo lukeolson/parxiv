@@ -125,7 +125,6 @@ def find_figs(source):
     # list of figs with the relative path
     figstmp = r.findall(source)
     figs = [fig[1] for fig in figstmp]
-    print figs
 
     # replace the relative path with .
     source = r.sub(lambda x:
@@ -133,9 +132,7 @@ def find_figs(source):
                    os.path.basename(x.group(2)) +
                    x.group(3), source)
     figstmp = r.findall(source)
-    print figstmp
     nfigs = [fig[1] for fig in figstmp]
-    print nfigs
 
     return figs, source
 
