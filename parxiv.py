@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 """
 usage:
     python parxiv.py file.tex
