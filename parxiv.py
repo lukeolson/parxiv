@@ -143,6 +143,7 @@ def main(fname):
     import time
     import os
     import shutil
+    import glob
 
     with io.open(fname, encoding='utf-8') as f:
         source = f.read()
@@ -151,9 +152,15 @@ def main(fname):
     figs, source = find_figs(source)
 
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
+    dirname = dirname.replace(':', '-')
     os.makedirs(dirname)
     for fig in figs:
-        shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
+        try:
+            shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
+        except:
+            base = os.path.join(dirname, os.path.basename(fig))
+            for newfig in glob.glob(base+'.*'):
+                shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
 
     bblfile = fname.replace('.tex', '.bbl')
     newbblfile = fname.replace('.tex', '_strip.bbl')
