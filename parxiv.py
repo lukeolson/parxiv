@@ -102,7 +102,7 @@ def strip_comments(source):
 
     # Error handling rule
     def t_error(t):
-        print "Illegal character '%s'" % t.value[0]
+        print("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
 
     lexer = ply.lex.lex()
@@ -112,6 +112,8 @@ def strip_comments(source):
 
 def find_figs(source):
     """
+    look for \graphicspath{{subdir}}  (a single subdir)
+
     find figures in \includegraphics[something]{PATH/filename.ext}
                     \includegraphics{PATH/filename.ext}
 
@@ -121,11 +123,13 @@ def find_figs(source):
     import re
     import os
 
+    graphicspath = re.search('graphicspath{{(.*)}}', source).groups(0)[0]
+
     r = re.compile(r'(\includegraphics\[.*?\]{)(.*?)(})')
 
     # list of figs with the relative path
     figstmp = r.findall(source)
-    figs = [fig[1] for fig in figstmp]
+    figs = [os.path.join(graphicspath, fig[1]) for fig in figstmp]
 
     # replace the relative path with .
     source = r.sub(lambda x:
@@ -155,6 +159,11 @@ def main(fname):
     dirname = dirname.replace(':', '-')
     os.makedirs(dirname)
     for fig in figs:
+
+        _, ext = os.path.splitext(fig)
+        if ext is '':
+            fig += '.pdf'
+
         try:
             shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
         except:
