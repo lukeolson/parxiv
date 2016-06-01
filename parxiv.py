@@ -123,7 +123,11 @@ def find_figs(source):
     import re
     import os
 
-    graphicspath = re.search('graphicspath{{(.*)}}', source).groups(0)[0]
+    findgraphicspath = re.search('graphicspath{{(.*)}}', source)
+    if findgraphicspath:
+        graphicspath = findgraphicspath.groups(0)[0]
+    else:
+        graphicspath = ''
 
     r = re.compile(r'(\includegraphics\[.*?\]{)(.*?)(})')
 
