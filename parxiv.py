@@ -105,6 +105,18 @@ def strip_comments(source):
         print("Illegal character '%s'" % t.value[0])
         t.lexer.skip(1)
 
+    def t_linecomment_error(t):
+        print("Illegal character '%s'" % t.value[0])
+        t.lexer.skip(1)
+
+    def t_verbatim_error(t):
+        print("Illegal character '%s'" % t.value[0])
+        t.lexer.skip(1)
+
+    def t_commentenv_error(t):
+        print("Illegal character '%s'" % t.value[0])
+        t.lexer.skip(1)
+
     lexer = ply.lex.lex()
     lexer.input(source)
     return u"".join([tok.value for tok in lexer])
@@ -169,12 +181,17 @@ def main(fname):
     import shutil
     import glob
 
+    print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
         source = f.read()
 
+    print('[parxiv] stripping comments')
     source = strip_comments(source)
+    print('[parxiv] flattening source')
     source = flatten(source)
+    print('[parxiv] stripping comments again')
     source = strip_comments(source)
+    print('[parxiv] finding figures...')
     figs, source = find_figs(source)
 
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
