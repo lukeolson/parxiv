@@ -146,6 +146,22 @@ def find_figs(source):
     return figs, source
 
 
+def flatten(source):
+    """
+    replace arguments of include{} and intput{}
+    assumes no comments
+    """
+    import re
+    import io
+
+    def repl(m):
+        with io.open(m.group(2), encoding='utf-8') as f:
+            newtext = f.read()
+        return newtext
+    dest = re.sub(r'(\\input{)(.*?)(})', repl, source)
+    return dest
+
+
 def main(fname):
     import io
     import time
@@ -156,6 +172,8 @@ def main(fname):
     with io.open(fname, encoding='utf-8') as f:
         source = f.read()
 
+    source = strip_comments(source)
+    source = flatten(source)
     source = strip_comments(source)
     figs, source = find_figs(source)
 
