@@ -1,4 +1,5 @@
 #!/usr/local/bin/python
+from __future__ import print_function
 """
 usage:
     python parxiv.py file.tex
@@ -131,31 +132,35 @@ def find_figs(source):
 
     make them       \includegraphics[something]{filename.ext}
                     \includegraphics{filename.ext}
+
+    copy figures to arxivdir
     """
     import re
     import os
 
-    findgraphicspath = re.search('graphicspath{{(.*)}}', source)
+    findgraphicspath = re.search(r'\\graphicspath{(.*)}', source)
     if findgraphicspath:
-        graphicspath = findgraphicspath.groups(0)[0]
+        graphicspaths = findgraphicspath.group(1)
+        graphicspaths = re.findall('{(.*?)}', graphicspaths)
     else:
-        graphicspath = ''
+        graphicspaths = []
 
-    r = re.compile(r'(\includegraphics\[.*?\]{)(.*?)(})')
+    # keep a list of (figname, figpath)
+    figlist = []
 
-    # list of figs with the relative path
-    figstmp = r.findall(source)
-    figs = [os.path.join(graphicspath, fig[1]) for fig in figstmp]
+    def repl(m):
 
-    # replace the relative path with .
-    source = r.sub(lambda x:
-                   x.group(1) +
-                   os.path.basename(x.group(2)) +
-                   x.group(3), source)
-    figstmp = r.findall(source)
-    nfigs = [fig[1] for fig in figstmp]
+        figpath = ''
+        figname = os.path.basename(m.group(2))
+        figpath = os.path.dirname(m.group(2))
+        newincludegraphics = m.group(1) + figname + m.group(3)
 
-    return figs, source
+        figlist.append((figname, figpath))
+        return newincludegraphics
+
+    source = re.sub(r'(\includegraphics\[.*?\]{)(.*?)(})', repl, source)
+
+    return figlist, source, graphicspaths
 
 
 def flatten(source):
@@ -192,19 +197,34 @@ def main(fname):
     print('[parxiv] stripping comments again')
     source = strip_comments(source)
     print('[parxiv] finding figures...')
-    figs, source = find_figs(source)
+    figlist, source, graphicspaths = find_figs(source)
 
+    print('[parxiv] making directory', end='')
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
     dirname = dirname.replace(':', '-')
+    print(' %s' % dirname)
     os.makedirs(dirname)
-    for fig in figs:
 
-        _, ext = os.path.splitext(fig)
+    print('[parxiv] copying figures', end='')
+    print('             ... ', end='')
+    for figname, figpath in figlist:
+
+        _, ext = os.path.splitext(figname)
         if ext is '':
-            fig += '.pdf'
+            figname += '.pdf'
 
-        try:
-            shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
+        allpaths = graphicspaths
+        if(len(figpath) > 0):
+            allpaths = [figpath] + allpaths
+        allpaths += './'
+
+        for p in allpaths:
+            src = os.path.join(p, figname)
+            dest = os.path.join(dirname, os.path.basename(figname))
+            try:
+                shutil.copy2(src, dest)
+            except IOError
+            # then try graphicspath in order
         except:
             base = os.path.join(dirname, os.path.basename(fig))
             for newfig in glob.glob(base+'.*'):
