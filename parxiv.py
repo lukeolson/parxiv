@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/local/bin/python3
 from __future__ import print_function
 """
 usage:
@@ -223,12 +223,12 @@ def main(fname):
             dest = os.path.join(dirname, os.path.basename(figname))
             try:
                 shutil.copy2(src, dest)
-            except IOError
-            # then try graphicspath in order
-        except:
-            base = os.path.join(dirname, os.path.basename(fig))
-            for newfig in glob.glob(base+'.*'):
-                shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
+            except IOError:
+                pass
+                # then try graphicspath in order
+                #base = os.path.join(dirname, os.path.basename(fig))
+                #for newfig in glob.glob(base+'.*'):
+                # shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
 
     bblfile = fname.replace('.tex', '.bbl')
     newbblfile = fname.replace('.tex', '_strip.bbl')
