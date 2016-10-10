@@ -123,6 +123,34 @@ def strip_comments(source):
     return u"".join([tok.value for tok in lexer])
 
 
+def find_class(source):
+    """
+    look for \documentclass[review]{siamart}
+        then return 'siamart.cls'
+    """
+    import re
+
+    classname = re.search(r'\\documentclass.*{(.*)}', source)
+    if classname:
+        classname = classname.group(1) + '.cls'
+
+    return classname
+
+
+def find_bibstyle(source):
+    """
+    look for \ bibliographystyle{siamplain}
+        then return 'siamplain.bst'
+    """
+    import re
+
+    bibstylename = re.search(r'\\bibliographystyle{(.*)}', source)
+    if bibstylename:
+        bibstylename = bibstylename.group(1) + '.bst'
+
+    return bibstylename
+
+
 def find_figs(source):
     """
     look for \graphicspath{{subdir}}  (a single subdir)
@@ -184,7 +212,6 @@ def main(fname):
     import time
     import os
     import shutil
-    import glob
 
     print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
@@ -198,12 +225,19 @@ def main(fname):
     source = strip_comments(source)
     print('[parxiv] finding figures...')
     figlist, source, graphicspaths = find_figs(source)
+    print('[parxiv] finding article class and bib style')
+    localclass = find_class(source)
+    localbibstyle = find_bibstyle(source)
 
     print('[parxiv] making directory', end='')
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
     dirname = dirname.replace(':', '-')
     print(' %s' % dirname)
     os.makedirs(dirname)
+
+    print('[parxiv] copying class/style files')
+    shutil.copy2(localclass, os.path.join(dirname, localclass))
+    shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
 
     print('[parxiv] copying figures', end='')
     print('             ... ', end='')
@@ -224,10 +258,11 @@ def main(fname):
             try:
                 shutil.copy2(src, dest)
             except IOError:
+                # probably doesn't work right now for multiple graphics paths
                 pass
                 # then try graphicspath in order
-                #base = os.path.join(dirname, os.path.basename(fig))
-                #for newfig in glob.glob(base+'.*'):
+                # base = os.path.join(dirname, os.path.basename(fig))
+                # for newfig in glob.glob(base+'.*'):
                 # shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
 
     bblfile = fname.replace('.tex', '.bbl')
