@@ -6,8 +6,11 @@ usage:
 
 this will make arxiv-somelongdatestring with
     - file_strip.tex (where includegraphics paths are stripped)
-    - file_strip.bbl (you should have teh .bbl file already)
+    - file_strip.bbl (you should have the .bbl file already)
     - all figures
+    - the class file if custom
+    - the bib style if custom
+    - extra files listed in extra.txt
 """
 
 
@@ -240,7 +243,7 @@ def main(fname):
     shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
 
     print('[parxiv] copying figures', end='')
-    print('             ... ', end='')
+    print('             ... ')
     for figname, figpath in figlist:
 
         _, ext = os.path.splitext(figname)
@@ -265,9 +268,33 @@ def main(fname):
                 # for newfig in glob.glob(base+'.*'):
                 # shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
 
+    # copy bbl file
+    print('[parxiv] copying bbl file')
     bblfile = fname.replace('.tex', '.bbl')
     newbblfile = fname.replace('.tex', '_strip.bbl')
     shutil.copy2(bblfile, os.path.join(dirname, newbblfile))
+
+    # copy extra files
+    try:
+        with io.open('extra.txt', encoding='utf-8') as f:
+            source = f.read()
+    except:
+        print('[parxiv] copying no extra files')
+    else:
+        flag = False
+        for f in source.split('\n'):
+            if len(f) > 0:
+                if f[0] is not '#':
+                    if not flag:
+                        print('[parxiv] copying extra file', end='')
+                        flag = True
+                    localname = os.path.basename(f)
+                    print(' %s' % localname, end='')
+                    shutil.copy2(f, os.path.join(dirname, localname))
+        if not flag:
+            print('[parxiv] copying no extra files (blank)')
+        else:
+            print(' ')
 
     with io.open(
             os.path.join(dirname, fname.replace('.tex', '_strip.tex')),
