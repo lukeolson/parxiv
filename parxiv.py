@@ -189,7 +189,7 @@ def find_figs(source):
         figlist.append((figname, figpath))
         return newincludegraphics
 
-    source = re.sub(r'(\includegraphics\[.*?\]{)(.*?)(})', repl, source)
+    source = re.sub(r'(\\includegraphics\[.*?\]{)(.*?)(})', repl, source)
 
     return figlist, source, graphicspaths
 
@@ -201,12 +201,16 @@ def flatten(source):
     """
     import re
     import io
+    import os
 
     def repl(m):
-        with io.open(m.group(2), encoding='utf-8') as f:
+        inputname = m.group(2)
+        if not os.path.isfile(inputname):
+            inputname = inputname + '.tex'
+        with io.open(inputname, encoding='utf-8') as f:
             newtext = f.read()
         return newtext
-    dest = re.sub(r'(\\input{)(.*?)(})', repl, source)
+    dest = re.sub(r'(\\input{|\\include{)(.*?)(})', repl, source)
     return dest
 
 
@@ -266,7 +270,7 @@ def main(fname):
                 # then try graphicspath in order
                 # base = os.path.join(dirname, os.path.basename(fig))
                 # for newfig in glob.glob(base+'.*'):
-                # shutil.copy2(fig, os.path.join(dirname, os.path.basename(fig)))
+                # shutil.copy2(fig,os.path.join(dirname,os.path.basename(fig)))
 
     # copy bbl file
     print('[parxiv] copying bbl file')
@@ -277,12 +281,12 @@ def main(fname):
     # copy extra files
     try:
         with io.open('extra.txt', encoding='utf-8') as f:
-            source = f.read()
+            inputsource = f.read()
     except:
         print('[parxiv] copying no extra files')
     else:
         flag = False
-        for f in source.split('\n'):
+        for f in inputsource.split('\n'):
             if len(f) > 0:
                 if f[0] is not '#':
                     if not flag:
@@ -302,6 +306,7 @@ def main(fname):
         fout.write(source)
 
     return source
+
 
 if __name__ == '__main__':
     import sys
