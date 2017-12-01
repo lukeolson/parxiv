@@ -1,5 +1,14 @@
 #!/usr/local/bin/python3
 from __future__ import print_function
+import ply.lex
+import os
+import re
+import io
+import glob
+import shutil
+import sys
+import time
+
 """
 usage:
     python parxiv.py file.tex
@@ -11,6 +20,9 @@ this will make arxiv-somelongdatestring with
     - the class file if custom
     - the bib style if custom
     - extra files listed in extra.txt
+
+Modified by Ishan Misra
+https://github.com/imisra
 """
 
 
@@ -18,7 +30,6 @@ def strip_comments(source):
     """
     from https://gist.github.com/amerberg/a273ca1e579ab573b499
     """
-    import ply.lex
     tokens = ('PERCENT', 'BEGINCOMMENT', 'ENDCOMMENT', 'BACKSLASH',
               'CHAR', 'BEGINVERBATIM', 'ENDVERBATIM', 'NEWLINE',
               'ESCPCT',
@@ -131,8 +142,6 @@ def find_class(source):
     look for \documentclass[review]{siamart}
         then return 'siamart.cls'
     """
-    import re
-
     classname = re.search(r'\\documentclass.*{(.*)}', source)
     if classname:
         classname = classname.group(1) + '.cls'
@@ -140,13 +149,24 @@ def find_class(source):
     return classname
 
 
+def find_clsstyfiles(source):
+    '''
+    find list of cls and sty files in current directory
+    '''    
+    dirname = os.path.dirname(source)
+    styfilelist = glob.glob(os.path.join(dirname, '*.sty'))
+    clsfilelist = glob.glob(os.path.join(dirname, '*.cls'))
+    all_files = []
+    all_files.extend(clsfilelist)
+    all_files.extend(styfilelist)
+    return all_files
+
+
 def find_bibstyle(source):
     """
     look for \ bibliographystyle{siamplain}
         then return 'siamplain.bst'
     """
-    import re
-
     bibstylename = re.search(r'\\bibliographystyle{(.*)}', source)
     if bibstylename:
         bibstylename = bibstylename.group(1) + '.bst'
@@ -166,9 +186,6 @@ def find_figs(source):
 
     copy figures to arxivdir
     """
-    import re
-    import os
-
     findgraphicspath = re.search(r'\\graphicspath{(.*)}', source)
     if findgraphicspath:
         graphicspaths = findgraphicspath.group(1)
@@ -194,32 +211,26 @@ def find_figs(source):
     return figlist, source, graphicspaths
 
 
-def flatten(source):
+def flatten_recursive(source):
     """
     replace arguments of include{} and intput{}
     assumes no comments
     """
-    import re
-    import io
-    import os
-
     def repl(m):
         inputname = m.group(2)
         if not os.path.isfile(inputname):
             inputname = inputname + '.tex'
+            print('Flattening', inputname)
         with io.open(inputname, encoding='utf-8') as f:
             newtext = f.read()
-        return newtext
+        newtext2 = newtext
+        newtext2 = re.sub(r'(\\input{|\\include{)(.*?)(})', repl, newtext)
+        return newtext2
     dest = re.sub(r'(\\input{|\\include{)(.*?)(})', repl, source)
     return dest
 
 
 def main(fname):
-    import io
-    import time
-    import os
-    import shutil
-
     print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
         source = f.read()
@@ -227,7 +238,7 @@ def main(fname):
     print('[parxiv] stripping comments')
     source = strip_comments(source)
     print('[parxiv] flattening source')
-    source = flatten(source)
+    source = flatten_recursive(source)
     print('[parxiv] stripping comments again')
     source = strip_comments(source)
     print('[parxiv] finding figures...')
@@ -235,6 +246,7 @@ def main(fname):
     print('[parxiv] finding article class and bib style')
     localclass = find_class(source)
     localbibstyle = find_bibstyle(source)
+    localclsstyfiles = find_clsstyfiles(source)
 
     print('[parxiv] making directory', end='')
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
@@ -242,9 +254,13 @@ def main(fname):
     print(' %s' % dirname)
     os.makedirs(dirname)
 
-    print('[parxiv] copying class/style files')
-    shutil.copy2(localclass, os.path.join(dirname, localclass))
+    # Commenting out the class/style copy because most article cls files are not in the source directory
+    # print('[parxiv] copying class/style files')
+    # shutil.copy2(localclass, os.path.join(dirname, localclass))
     shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
+    print('[parxiv] copying sty files in current directory')
+    [shutil.copy2(x, os.path.join(dirname, os.path.basename(x)))
+     for x in localclsstyfiles]
 
     print('[parxiv] copying figures', end='')
     print('             ... ')
@@ -309,7 +325,6 @@ def main(fname):
 
 
 if __name__ == '__main__':
-    import sys
     if len(sys.argv) != 2:
         print('usage: python parxiv.py <filename.tex>')
         sys.exit(-1)

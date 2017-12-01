@@ -1,3 +1,0 @@
-# list of external packages to send to the arxiv folder
-/usr/local/texlive/2016/texmf-dist/tex/latex/ntheorem/ntheorem.sty
-/usr/local/texlive/2016/texmf-dist/tex/latex/cleveref/cleveref.sty
