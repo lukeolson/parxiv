@@ -7,6 +7,8 @@ import os
 import io
 import time
 import shutil
+import tempfile
+import subprocess
 
 """
 usage:
@@ -34,6 +36,9 @@ def strip_comments(source):
               ('commentenv', 'exclusive'),
               ('verbatim', 'exclusive')
               )
+
+    if len(tokens) < 1 or len(states) < 1:
+        raise ValueError('need tokens and states')
 
     # Deal with escaped backslashes, so we don't think they're escaping %.
     def t_BACKSLASH(t):
@@ -249,8 +254,8 @@ def main(fname):
     source = strip_comments(source)
     print('[parxiv] finding figures...')
     figlist, source, graphicspaths = find_figs(source)
-    print('[parxiv] finding article class and bib style')
-    localbibstyle = find_bibstyle(source)
+    # print('[parxiv] finding article class and bib style')
+    # localbibstyle = find_bibstyle(source)
 
     print('[parxiv] making directory', end='')
     dirname = 'arxiv-' + time.strftime('%c').replace(' ', '-')
@@ -260,8 +265,10 @@ def main(fname):
 
     print('[parxiv] copying class/style files')
     # shutil.copy2(localclass, os.path.join(dirname, localclass))
-    if localbibstyle is not None:
-        shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
+    # if localbibstyle is not None:
+    #     shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
+    for bst in glob.glob('*.bst'):
+        shutil.copy2(bst, os.path.join(dirname, bst))
     for sty in glob.glob('*.sty'):
         shutil.copy2(sty, os.path.join(dirname, sty))
     for cls in glob.glob('*.cls'):
@@ -292,8 +299,10 @@ def main(fname):
     print('[parxiv] copying bbl file')
     bblfile = fname.replace('.tex', '.bbl')
     newbblfile = fname.replace('.tex', '_strip.bbl')
+    bblflag = False
     try:
         shutil.copy2(bblfile, os.path.join(dirname, newbblfile))
+        bblflag = True
     except FileNotFoundError:
         print('          ...skipping, not found')
 
@@ -319,10 +328,46 @@ def main(fname):
         else:
             print(' ')
 
-    print('[parxiv] writing %s' % fname.replace('.tex', '_strip.tex'))
+    newtexfile = fname.replace('.tex', '_strip.tex')
+    print('[parxiv] writing %s' % newtexfile)
     with io.open(
-            os.path.join(dirname, fname.replace('.tex', '_strip.tex')), 'w') as fout:
+            os.path.join(dirname, newtexfile), 'w') as fout:
         fout.write(source)
+
+    print('[parxiv] attempting to generate bbl file')
+    if not bblflag:
+        # attempt to generate
+        with tempfile.TemporaryDirectory() as d:
+            try:
+                args = ['pdflatex',
+                        '-interaction', 'nonstopmode',
+                        '-recorder',
+                        '-output-directory', d,
+                        newtexfile]
+                p = subprocess.Popen(args,
+                                     cwd=dirname,
+                                     stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT)
+                stdout, stderr = p.communicate()
+
+                args = ['bibtex', newtexfile.replace('.tex', '.aux')]
+                p = subprocess.Popen(args,
+                                     cwd=d,
+                                     stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT)
+                stdout, stderr = p.communicate()
+            except OSError as e:
+                raise RuntimeError(e)
+
+            bblfile = newtexfile.replace('.tex', '.bbl')
+            if os.path.isfile(os.path.join(d, bblfile)):
+                print('         ... generated')
+                shutil.copy2(os.path.join(d, bblfile),
+                             os.path.join(dirname, bblfile))
+            else:
+                print('         ... could not generate')
 
     return source
 
