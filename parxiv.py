@@ -1,6 +1,12 @@
 #!/usr/local/bin/python3
 from __future__ import print_function
 import glob
+import ply.lex
+import re
+import os
+import io
+import time
+import shutil
 
 """
 usage:
@@ -20,7 +26,6 @@ def strip_comments(source):
     """
     from https://gist.github.com/amerberg/a273ca1e579ab573b499
     """
-    import ply.lex
     tokens = ('PERCENT', 'BEGINCOMMENT', 'ENDCOMMENT', 'BACKSLASH',
               'CHAR', 'BEGINVERBATIM', 'ENDVERBATIM', 'NEWLINE',
               'ESCPCT',
@@ -130,10 +135,11 @@ def strip_comments(source):
 
 def find_class(source):
     """
+    (unused)
+
     look for \documentclass[review]{siamart}
         then return 'siamart.cls'
     """
-    import re
 
     classname = re.search(r'\\documentclass.*{(.*)}', source)
     if classname:
@@ -147,7 +153,6 @@ def find_bibstyle(source):
     look for \ bibliographystyle{siamplain}
         then return 'siamplain.bst'
     """
-    import re
 
     bibstylename = re.search(r'\\bibliographystyle{(.*)}', source)
     if bibstylename:
@@ -168,8 +173,6 @@ def find_figs(source):
 
     copy figures to arxivdir
     """
-    import re
-    import os
 
     findgraphicspath = re.search(r'\\graphicspath{(.*)}', source)
     if findgraphicspath:
@@ -206,9 +209,6 @@ def flatten(source):
 
     includeonly not supported
     """
-    import re
-    import io
-    import os
 
     def repl(m):
         inputname = m.group(2)
@@ -236,10 +236,6 @@ def flatten(source):
 
 
 def main(fname):
-    import io
-    import time
-    import os
-    import shutil
 
     print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
@@ -254,7 +250,6 @@ def main(fname):
     print('[parxiv] finding figures...')
     figlist, source, graphicspaths = find_figs(source)
     print('[parxiv] finding article class and bib style')
-    localclass = find_class(source)
     localbibstyle = find_bibstyle(source)
 
     print('[parxiv] making directory', end='')
