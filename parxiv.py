@@ -1,5 +1,7 @@
 #!/usr/local/bin/python3
 from __future__ import print_function
+import glob
+
 """
 usage:
     python parxiv.py file.tex
@@ -245,6 +247,10 @@ def main(fname):
     print('[parxiv] copying class/style files')
     shutil.copy2(localclass, os.path.join(dirname, localclass))
     shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
+    for sty in glob.glob(os.path.join(os.getcwd(), '*.sty')):
+        shutil.copy2(sty, os.path.join(dirname, sty))
+    for cls in glob.glob(os.path.join(os.getcwd(), '*.cls')):
+        shutil.copy2(sty, os.path.join(dirname, cls))
 
     print('[parxiv] copying figures', end='')
     print('             ... ')
