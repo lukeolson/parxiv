@@ -1,0 +1,33 @@
+\pdfsuppresswarningpagegroup=1
+% This is an example document
+\documentclass[leqno]{amsart}
+
+% Load some packages
+\usepackage[margin=1in]{geometry}
+
+\usepackage{graphicx}
+\graphicspath{{figs1/}{figs2/}}
+
+% start of the document
+\begin{document}
+
+Testing three images:
+
+% one in directory ./figs1
+\begin{center}
+  \includegraphics[width=1in]{fig1.pdf}
+\end{center}
+
+% one in directory ./figs2
+\begin{center}
+  \includegraphics[width=1in]{fig2}
+\end{center}
+
+% one in directory ./figs3
+\begin{center}
+  \includegraphics[width=1in]{./figs3/fig3}
+\end{center}
+
+\include{section}
+
+\end{document}

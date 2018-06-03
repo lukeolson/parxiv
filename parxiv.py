@@ -199,7 +199,12 @@ def find_figs(source):
 def flatten(source):
     """
     replace arguments of include{} and intput{}
-    assumes no comments
+
+    only input can be nested
+
+    include adds a clearpage
+
+    includeonly not supported
     """
     import re
     import io
@@ -211,8 +216,22 @@ def flatten(source):
             inputname = inputname + '.tex'
         with io.open(inputname, encoding='utf-8') as f:
             newtext = f.read()
+        newtext = re.sub(r'(\\input{)(.*?)(})', repl, newtext)
         return newtext
-    dest = re.sub(r'(\\input{|\\include{)(.*?)(})', repl, source)
+
+    def repl_include(m):
+        inputname = m.group(2)
+        if not os.path.isfile(inputname):
+            inputname = inputname + '.tex'
+        with io.open(inputname, encoding='utf-8') as f:
+            newtext = f.read()
+        newtext = '\\clearpage\n' + newtext
+        newtext = re.sub(r'(\\input{)(.*?)(})', repl, newtext)
+        newtext += '\\clearpage\n'
+        return newtext
+
+    dest = re.sub(r'(\\include{)(.*?)(})', repl_include, source, True)
+    dest = re.sub(r'(\\input{)(.*?)(})', repl, dest)
     return dest
 
 
@@ -245,25 +264,25 @@ def main(fname):
     os.makedirs(dirname)
 
     print('[parxiv] copying class/style files')
-    shutil.copy2(localclass, os.path.join(dirname, localclass))
-    shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
-    for sty in glob.glob(os.path.join(os.getcwd(), '*.sty')):
+    # shutil.copy2(localclass, os.path.join(dirname, localclass))
+    if localbibstyle is not None:
+        shutil.copy2(localbibstyle, os.path.join(dirname, localbibstyle))
+    for sty in glob.glob('*.sty'):
         shutil.copy2(sty, os.path.join(dirname, sty))
-    for cls in glob.glob(os.path.join(os.getcwd(), '*.cls')):
-        shutil.copy2(sty, os.path.join(dirname, cls))
+    for cls in glob.glob('*.cls'):
+        shutil.copy2(cls, os.path.join(dirname, cls))
 
     print('[parxiv] copying figures', end='')
-    print('             ... ')
+    allpaths = graphicspaths
+    allpaths += ['./']
     for figname, figpath in figlist:
 
         _, ext = os.path.splitext(figname)
         if ext is '':
             figname += '.pdf'
 
-        allpaths = graphicspaths
         if(len(figpath) > 0):
             allpaths = [figpath] + allpaths
-        allpaths += './'
 
         for p in allpaths:
             src = os.path.join(p, figname)
@@ -271,24 +290,23 @@ def main(fname):
             try:
                 shutil.copy2(src, dest)
             except IOError:
-                # probably doesn't work right now for multiple graphics paths
+                # attempts multiple graphics paths
                 pass
-                # then try graphicspath in order
-                # base = os.path.join(dirname, os.path.basename(fig))
-                # for newfig in glob.glob(base+'.*'):
-                # shutil.copy2(fig,os.path.join(dirname,os.path.basename(fig)))
 
     # copy bbl file
     print('[parxiv] copying bbl file')
     bblfile = fname.replace('.tex', '.bbl')
     newbblfile = fname.replace('.tex', '_strip.bbl')
-    shutil.copy2(bblfile, os.path.join(dirname, newbblfile))
+    try:
+        shutil.copy2(bblfile, os.path.join(dirname, newbblfile))
+    except FileNotFoundError:
+        print('          ...skipping, not found')
 
     # copy extra files
     try:
         with io.open('extra.txt', encoding='utf-8') as f:
             inputsource = f.read()
-    except:
+    except IOError:
         print('[parxiv] copying no extra files')
     else:
         flag = False
@@ -306,9 +324,9 @@ def main(fname):
         else:
             print(' ')
 
+    print('[parxiv] writing %s' % fname.replace('.tex', '_strip.tex'))
     with io.open(
-            os.path.join(dirname, fname.replace('.tex', '_strip.tex')),
-            'w') as fout:
+            os.path.join(dirname, fname.replace('.tex', '_strip.tex')), 'w') as fout:
         fout.write(source)
 
     return source
