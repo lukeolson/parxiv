@@ -10,6 +10,12 @@ import shutil
 import tempfile
 import subprocess
 
+# Python2 FileNotFoundError support
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError
+
 """
 usage:
     python parxiv.py file.tex
@@ -313,20 +319,13 @@ def main(fname):
     except IOError:
         print('[parxiv] copying no extra files')
     else:
-        flag = False
+        print('[parxiv] copying extra file(s): ', end='')
         for f in inputsource.split('\n'):
-            if len(f) > 0:
-                if f[0] is not '#':
-                    if not flag:
-                        print('[parxiv] copying extra file', end='')
-                        flag = True
+            if os.path.isfile(f):
                     localname = os.path.basename(f)
                     print(' %s' % localname, end='')
                     shutil.copy2(f, os.path.join(dirname, localname))
-        if not flag:
-            print('[parxiv] copying no extra files (blank)')
-        else:
-            print(' ')
+        print('\n')
 
     newtexfile = fname.replace('.tex', '_strip.tex')
     print('[parxiv] writing %s' % newtexfile)
@@ -337,16 +336,22 @@ def main(fname):
     print('[parxiv] attempting to generate bbl file')
     if not bblflag:
         # attempt to generate
-        with tempfile.TemporaryDirectory() as d:
+        # with tempfile.TemporaryDirectory() as d:
+        try:
+            d = tempfile.mkdtemp()
             try:
                 args = ['pdflatex',
                         '-interaction', 'nonstopmode',
                         '-recorder',
                         '-output-directory', d,
                         newtexfile]
+                try:
+                    from subprocess import DEVNULL  # Python 3.
+                except ImportError:
+                    DEVNULL = open(os.devnull, 'wb')
                 p = subprocess.Popen(args,
                                      cwd=dirname,
-                                     stdin=subprocess.DEVNULL,
+                                     stdin=DEVNULL,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
                 stdout, stderr = p.communicate()
@@ -354,7 +359,7 @@ def main(fname):
                 args = ['bibtex', newtexfile.replace('.tex', '.aux')]
                 p = subprocess.Popen(args,
                                      cwd=d,
-                                     stdin=subprocess.DEVNULL,
+                                     stdin=DEVNULL,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
                 stdout, stderr = p.communicate()
@@ -368,6 +373,12 @@ def main(fname):
                              os.path.join(dirname, bblfile))
             else:
                 print('         ... could not generate')
+        finally:
+            try:
+                shutil.rmtree(d)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
 
     return source
 
