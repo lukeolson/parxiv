@@ -322,9 +322,9 @@ def main(fname):
         print('[parxiv] copying extra file(s): ', end='')
         for f in inputsource.split('\n'):
             if os.path.isfile(f):
-                    localname = os.path.basename(f)
-                    print(' %s' % localname, end='')
-                    shutil.copy2(f, os.path.join(dirname, localname))
+                localname = os.path.basename(f)
+                print(' %s' % localname, end='')
+                shutil.copy2(f, os.path.join(dirname, localname))
         print('\n')
 
     newtexfile = fname.replace('.tex', '_strip.tex')
@@ -357,6 +357,10 @@ def main(fname):
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
                 stdout, stderr = p.communicate()
+
+                # copy .bib files
+                for bib in glob.glob('*.bib'):
+                    shutil.copy2(bib, os.path.join(d, bib))
 
                 args = ['bibtex', newtexfile.replace('.tex', '.aux')]
                 p = subprocess.Popen(args,
