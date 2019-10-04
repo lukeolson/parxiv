@@ -337,6 +337,7 @@ def main(fname):
     if not bblflag:
         # attempt to generate
         # with tempfile.TemporaryDirectory() as d:
+        # python2 support
         try:
             d = tempfile.mkdtemp()
             try:
@@ -345,8 +346,9 @@ def main(fname):
                         '-recorder',
                         '-output-directory', d,
                         newtexfile]
+                # python2 support
                 try:
-                    from subprocess import DEVNULL  # Python 3.
+                    from subprocess import DEVNULL
                 except ImportError:
                     DEVNULL = open(os.devnull, 'wb')
                 p = subprocess.Popen(args,
