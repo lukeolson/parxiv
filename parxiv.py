@@ -179,10 +179,10 @@ def find_figs(source):
     find figures in \includegraphics[something]{PATH/filename.ext}
                     \includegraphics{PATH/filename.ext}
 
-    make them       \includegraphics[something]{filename.ext}
-                    \includegraphics{filename.ext}
+    make them       \includegraphics[something]{PATH-filename.ext}
+                    \includegraphics{PATH-filename.ext}
 
-    copy figures to arxivdir
+    later: copy figures to arxivdir
     """
 
     findgraphicspath = re.search(r'\\graphicspath{(.*)}', source)
@@ -196,13 +196,16 @@ def find_figs(source):
     figlist = []
 
     def repl(m):
-
         figpath = ''
         figname = os.path.basename(m.group(2))
-        figpath = os.path.dirname(m.group(2))
-        newincludegraphics = m.group(1) + figname + m.group(3)
+        figpath = os.path.dirname(m.group(2)).lstrip('./')
+        if figpath:
+            newfigname = figpath.replace(' ', '_').replace('/', '_')+'_'+figname
+        else:
+            newfigname = figname
 
-        figlist.append((figname, figpath))
+        newincludegraphics = m.group(1) + newfigname + m.group(3)
+        figlist.append((figname, figpath, newfigname))
         return newincludegraphics
 
     source = re.sub(r'(\\includegraphics\[.*?\]{)(.*?)(})', repl, source)
@@ -280,21 +283,26 @@ def main(fname):
     for cls in glob.glob('*.cls'):
         shutil.copy2(cls, os.path.join(dirname, cls))
 
-    print('[parxiv] copying figures', end='')
-    allpaths = graphicspaths
-    allpaths += ['./']
-    for figname, figpath in figlist:
+    print('[parxiv] copying figures')
+    for figname, figpath, newfigname in figlist:
+        allpaths = graphicspaths
+        allpaths += ['./']
 
         _, ext = os.path.splitext(figname)
         if ext is '':
             figname += '.pdf'
+            newfigname += '.pdf'
 
-        if(len(figpath) > 0):
-            allpaths = [figpath] + allpaths
+        if figpath:
+            allpaths = [os.path.join(p, figpath) for p in allpaths]
 
         for p in allpaths:
+
+            #if 'quartz' in newfigname:
+            #    print(p)
+
             src = os.path.join(p, figname)
-            dest = os.path.join(dirname, os.path.basename(figname))
+            dest = os.path.join(dirname, os.path.basename(newfigname))
             try:
                 shutil.copy2(src, dest)
             except IOError:
@@ -360,6 +368,8 @@ def main(fname):
 
                 # copy .bib files
                 for bib in glob.glob('*.bib'):
+                    shutil.copy2(bib, os.path.join(d, bib))
+                for bib in glob.glob('*.bst'):
                     shutil.copy2(bib, os.path.join(d, bib))
 
                 args = ['bibtex', newtexfile.replace('.tex', '.aux')]
