@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#! /usr/bin/env python
 from __future__ import print_function
 import glob
 import ply.lex
@@ -289,7 +289,7 @@ def main(fname):
         allpaths += ['./']
 
         _, ext = os.path.splitext(figname)
-        if ext is '':
+        if ext == '':
             figname += '.pdf'
             newfigname += '.pdf'
 
