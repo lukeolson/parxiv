@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 from __future__ import print_function
 import glob
-import ply.lex
 import re
 import os
 import io
@@ -9,6 +8,8 @@ import time
 import shutil
 import tempfile
 import subprocess
+
+import ply.lex
 
 # Python2 FileNotFoundError support
 try:
@@ -32,23 +33,32 @@ this will make arxiv-somelongdatestring with
 
 def strip_comments(source):
     """
-    from https://gist.github.com/amerberg/a273ca1e579ab573b499
+    from https://gist.github.com/dzhuang/dc34cdd7efa43e5ecc1dc981cc906c85
     """
-    tokens = ('PERCENT', 'BEGINCOMMENT', 'ENDCOMMENT', 'BACKSLASH',
-              'CHAR', 'BEGINVERBATIM', 'ENDVERBATIM', 'NEWLINE',
-              'ESCPCT',
-              )
-    states = (('linecomment', 'exclusive'),
-              ('commentenv', 'exclusive'),
-              ('verbatim', 'exclusive')
-              )
+    tokens = (
+                'PERCENT', 'BEGINCOMMENT', 'ENDCOMMENT',
+                'BACKSLASH', 'CHAR', 'BEGINVERBATIM',
+                'ENDVERBATIM', 'NEWLINE', 'ESCPCT',
+                'MAKEATLETTER', 'MAKEATOTHER',
+             )
+    states = (
+                ('makeatblock', 'exclusive'),
+                ('makeatlinecomment', 'exclusive'),
+                ('linecomment', 'exclusive'),
+                ('commentenv', 'exclusive'),
+                ('verbatim', 'exclusive')
+            )
 
-    if len(tokens) < 1 or len(states) < 1:
-        raise ValueError('need tokens and states')
-
-    # Deal with escaped backslashes, so we don't think they're escaping %.
+    # Deal with escaped backslashes, so we don't
+    # think they're escaping %
     def t_BACKSLASH(t):
         r"\\\\"
+        return t
+
+    # Leaving all % in makeatblock
+    def t_MAKEATLETTER(t):
+        r"\\makeatletter"
+        t.lexer.begin("makeatblock")
         return t
 
     # One-line comments
@@ -66,13 +76,13 @@ def strip_comments(source):
         r"\\begin\s*{\s*comment\s*}"
         t.lexer.begin("commentenv")
 
-    # Verbatim environment (different treatment of comments within)
+    #Verbatim environment (different treatment of comments within)
     def t_BEGINVERBATIM(t):
         r"\\begin\s*{\s*verbatim\s*}"
         t.lexer.begin("verbatim")
         return t
 
-    # Any other character in initial state we leave alone
+    #Any other character in initial state we leave alone
     def t_CHAR(t):
         r"."
         return t
@@ -84,7 +94,7 @@ def strip_comments(source):
     # End comment environment
     def t_commentenv_ENDCOMMENT(t):
         r"\\end\s*{\s*comment\s*}"
-        # Anything after \end{comment} on a line is ignored!
+        #Anything after \end{comment} on a line is ignored!
         t.lexer.begin('linecomment')
 
     # Ignore comments of comment environment
@@ -96,13 +106,13 @@ def strip_comments(source):
         r"\n"
         pass
 
-    # End of verbatim environment
+    #End of verbatim environment
     def t_verbatim_ENDVERBATIM(t):
         r"\\end\s*{\s*verbatim\s*}"
         t.lexer.begin('INITIAL')
         return t
 
-    # Leave contents of verbatim environment alone
+    #Leave contents of verbatim environment alone
     def t_verbatim_CHAR(t):
         r"."
         return t
@@ -111,32 +121,55 @@ def strip_comments(source):
         r"\n"
         return t
 
-    # End a % comment when we get to a new line
+    #End a % comment when we get to a new line
     def t_linecomment_ENDCOMMENT(t):
         r"\n"
         t.lexer.begin("INITIAL")
-        # Newline at the end of a line comment is stripped.
 
-    # Ignore anything after a % on a line
+        # Newline at the end of a line comment is presevered.
+        return t
+
+    #Ignore anything after a % on a line
     def t_linecomment_CHAR(t):
         r"."
         pass
 
-    # Error handling rule
-    def t_error(t):
-        print("Illegal character '%s'" % t.value[0])
-        t.lexer.skip(1)
+    def t_makeatblock_MAKEATOTHER(t):
+        r"\\makeatother"
+        t.lexer.begin('INITIAL')
+        return t
 
-    def t_linecomment_error(t):
-        print("Illegal character '%s'" % t.value[0])
-        t.lexer.skip(1)
+    def t_makeatblock_BACKSLASH(t):
+        r"\\\\"
+        return t
 
-    def t_verbatim_error(t):
-        print("Illegal character '%s'" % t.value[0])
-        t.lexer.skip(1)
+    # Escaped percent signs in makeatblock
+    def t_makeatblock_ESCPCT(t):
+        r"\\\%"
+        return t
 
-    def t_commentenv_error(t):
-        print("Illegal character '%s'" % t.value[0])
+    # presever % in makeatblock
+    def t_makeatblock_PERCENT(t):
+        r"\%"
+        t.lexer.begin("makeatlinecomment")
+        return t
+
+    def t_makeatlinecomment_NEWLINE(t):
+        r"\n"
+        t.lexer.begin('makeatblock')
+        return t
+
+    # Leave contents of makeatblock alone
+    def t_makeatblock_CHAR(t):
+        r"."
+        return t
+
+    def t_makeatblock_NEWLINE(t):
+        r"\n"
+        return t
+
+    # For bad characters, we just skip over it
+    def t_ANY_error(t):
         t.lexer.skip(1)
 
     lexer = ply.lex.lex()
@@ -208,7 +241,7 @@ def find_figs(source):
         figlist.append((figname, figpath, newfigname))
         return newincludegraphics
 
-    source = re.sub(r'(\\includegraphics\[.*?\]{)(.*?)(})', repl, source)
+    source = re.sub(r'(\\includegraphics.*?{)(.*?)(})', repl, source)
 
     return figlist, source, graphicspaths
 
