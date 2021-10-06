@@ -442,7 +442,5 @@ def main():
                 if e.errno != errno.ENOENT:
                     raise
 
-    return source
-
 if __name__ == '__main__':
-    source = main()
+    main()
