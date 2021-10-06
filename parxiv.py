@@ -4,10 +4,12 @@ import glob
 import re
 import os
 import io
+import sys
 import time
 import shutil
 import tempfile
 import subprocess
+import errno
 
 import ply.lex
 
@@ -285,7 +287,11 @@ def flatten(source):
     return dest
 
 
-def main(fname):
+def main():
+    if len(sys.argv) != 2:
+        print('usage: python parxiv.py <filename.tex>')
+        sys.exit(-1)
+    fname = sys.argv[1]
 
     print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
@@ -400,7 +406,7 @@ def main(fname):
                                      stdin=DEVNULL,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
-                stdout, stderr = p.communicate()
+                p.communicate()
 
                 # copy .bib files
                 for bib in glob.glob('*.bib'):
@@ -414,7 +420,7 @@ def main(fname):
                                      stdin=DEVNULL,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT)
-                stdout, stderr = p.communicate()
+                p.communicate()
             except OSError as e:
                 raise RuntimeError(e)
 
@@ -434,12 +440,5 @@ def main(fname):
 
     return source
 
-
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) != 2:
-        print('usage: python parxiv.py <filename.tex>')
-        sys.exit(-1)
-
-    fname = sys.argv[1]
-    source = main(fname)
+    source = main()
