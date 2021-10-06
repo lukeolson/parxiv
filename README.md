@@ -1,11 +1,13 @@
-# clean-latex-to-arxiv
+# parxiv
 
 a simple script to assist in making a clean directory to upload to arxiv
+
+*formerly* `clean-latex-to-arxiv`
 
 ### Installation
 
 ```
-pip install -U git+https://github.com/lukeolson/clean-latex-to-arxiv
+pip install -U git+https://github.com/lukeolson/parxiv
 ```
 
 ### Usage
