@@ -65,6 +65,7 @@ def strip_comments(source):
     def t_PERCENT(t):
         r"\%"
         t.lexer.begin("linecomment")
+        return t  # keep the % as a blank comment
 
     # Escaped percent signs
     def t_ESCPCT(t):
@@ -178,7 +179,7 @@ def strip_comments(source):
 
 
 def find_class(source):
-    """
+    r"""
     (unused)
 
     look for \documentclass[review]{siamart}
@@ -193,8 +194,8 @@ def find_class(source):
 
 
 def find_bibstyle(source):
-    """
-    look for \ bibliographystyle{siamplain}
+    r"""
+    look for \bibliographystyle{siamplain}
         then return 'siamplain.bst'
     """
 
@@ -206,7 +207,7 @@ def find_bibstyle(source):
 
 
 def find_figs(source):
-    """
+    r"""
     look for \graphicspath{{subdir}}  (a single subdir)
 
     find figures in \includegraphics[something]{PATH/filename.ext}
