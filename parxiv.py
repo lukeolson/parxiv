@@ -11,6 +11,8 @@ import subprocess
 
 import ply.lex
 
+__version__ = '0.2.0'
+
 # Python2 FileNotFoundError support
 try:
     FileNotFoundError
