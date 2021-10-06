@@ -1,4 +1,21 @@
 #! /usr/bin/env python
+"""
+The purpose of this script is to generate a clean directory
+for upload to Arxiv.  The script has several steps:
+    1. read the tex file
+    2. strip the comments (leaving a %)
+    3. flatten the file for input
+    4. re-strip the comments
+    5. find figures
+    6. make an arxiv directory with a timestamp
+    7. copy relevant class/style files
+    8. copy figures
+    9. copy the bbl file (or generating the bbl file)
+    10. copy extra files
+
+usage:
+    python parxiv.py file.tex
+"""
 from __future__ import print_function
 import glob
 import re
@@ -20,20 +37,6 @@ try:
     FileNotFoundError
 except NameError:
     FileNotFoundError = IOError
-
-"""
-usage:
-    python parxiv.py file.tex
-
-this will make arxiv-somelongdatestring with
-    - file_strip.tex (where includegraphics paths are stripped)
-    - file_strip.bbl (you should have the .bbl file already)
-    - all figures
-    - the class file if custom
-    - the bib style if custom
-    - extra files listed in extra.txt
-"""
-
 
 def strip_comments(source):
     """
@@ -288,10 +291,11 @@ def flatten(source):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print('usage: python parxiv.py <filename.tex>')
-        sys.exit(-1)
-    fname = sys.argv[1]
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("fname", metavar="filename.tex", help="name of texfile to arxiv")
+    args = parser.parse_args()
+    fname = args.fname
 
     print('[parxiv] reading %s' % fname)
     with io.open(fname, encoding='utf-8') as f:
