@@ -1,6 +1,8 @@
 \pdfsuppresswarningpagegroup=1
 % This is an example document
 \documentclass[leqno]{amsart}
+\usepackage{tikz}
+\usepackage{import}
 
 % Load some packages
 \usepackage[margin=1in]{geometry}
@@ -27,6 +29,8 @@ Testing three images:
 \begin{center}
   \includegraphics[width=1in]{./figs3/fig3}
 \end{center}
+
+\subimport{./}{myfigure.tikz}
 
 \include{section}
 

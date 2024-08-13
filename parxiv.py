@@ -249,7 +249,7 @@ def find_figs(source):
         figlist.append((figname, figpath, newfigname))
         return newincludegraphics
 
-    source = re.sub(r'(\\includegraphics.*?{)(.*?)(})', repl, source)
+    source = re.sub(r'(\\includegraphics.*?{)(.*?)(})', repl, source, flags=re.DOTALL)
 
     return figlist, source, graphicspaths
 
@@ -268,7 +268,12 @@ def flatten(source):
     def repl(m):
         inputname = m.group(2)
         if not os.path.isfile(inputname):
-            inputname = inputname + '.tex'
+            if os.path.isfile(inputname + '.tex'):
+                inputname = inputname + '.tex'
+            elif os.path.isfile(inputname + '.tikz'):
+                inputname = inputname + '.tikz'
+            else:
+                raise NameError(f'File {inputname}.tex or .tikz not found.')
         with io.open(inputname, encoding='utf-8') as f:
             newtext = f.read()
         newtext = re.sub(r'(\\input{)(.*?)(})', repl, newtext)
@@ -285,7 +290,7 @@ def flatten(source):
         newtext += '\\clearpage\n'
         return newtext
 
-    dest = re.sub(r'(\\include{)(.*?)(})', repl_include, source, True)
+    dest = re.sub(r'(\\include{)(.*?)(})', repl_include, source)
     dest = re.sub(r'(\\input{)(.*?)(})', repl, dest)
     return dest
 

@@ -1,0 +1,6 @@
+%extra: mynode.tikz
+\begin{tikzpicture}
+  \input{mynode.tikz}
+
+  \draw[fill=gray] (0, 0) circle (0.2);
+\end{tikzpicture}
