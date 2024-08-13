@@ -249,7 +249,7 @@ def find_figs(source):
         figlist.append((figname, figpath, newfigname))
         return newincludegraphics
 
-    source = re.sub(r'(\\includegraphics.*?{)(.*?)(})', repl, source, flags=re.DOTALL)
+    source = re.sub(r'(\\includegraphics.*{)(.*)(})', repl, source, flags=re.DOTALL)
 
     return figlist, source, graphicspaths
 
