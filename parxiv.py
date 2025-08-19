@@ -27,6 +27,7 @@ import shutil
 import tempfile
 import subprocess
 import errno
+from collections import defaultdict
 
 import ply.lex
 
@@ -213,45 +214,58 @@ def find_bibstyle(source):
     return bibstylename
 
 
+from collections import defaultdict
+
 def find_figs(source):
     r"""
-    look for \graphicspath{{subdir}}  (a single subdir)
-
-    find figures in \includegraphics[something]{PATH/filename.ext}
-                    \includegraphics{PATH/filename.ext}
-
-    make them       \includegraphics[something]{PATH-filename.ext}
-                    \includegraphics{PATH-filename.ext}
-
-    later: copy figures to arxivdir
+    Parse \includegraphics and rename files with duplicate names using their relative path.
     """
 
     findgraphicspath = re.search(r'\\graphicspath{(.*)}', source)
     if findgraphicspath:
-        graphicspaths = findgraphicspath.group(1)
-        graphicspaths = re.findall('{(.*?)}', graphicspaths)
+        graphicspaths = re.findall(r'{(.*?)}', findgraphicspath.group(1))
     else:
         graphicspaths = []
 
-    # keep a list of (figname, figpath)
+    # First pass to count basename occurrences
+    matches = re.findall(r'\\includegraphics(?:\[[^\]]*\])?{(.*?)}', source)
+    name_counts = defaultdict(int)
+    for path in matches:
+        name = os.path.basename(path)
+        name_counts[name] += 1
+
     figlist = []
+    seen = {}
+
+    def path_to_safe_suffix(path):
+        """Convert ./foo/bar/baz.pdf -> baz_foo_bar.pdf"""
+        parts = os.path.normpath(path).split(os.sep)
+        return "_".join(reversed(parts)).replace('.', '_', parts[-1].count('.'))
 
     def repl(m):
-        figpath = ''
-        figname = os.path.basename(m.group(2))
-        figpath = os.path.dirname(m.group(2)).lstrip('./')
-        if figpath:
-            newfigname = figpath.replace(' ', '_').replace('/', '_')+'_'+figname
+        prefix, path, suffix = m.group(1), m.group(2), m.group(3)
+        base = os.path.basename(path)
+        dirpath = os.path.dirname(path).lstrip('./')
+
+        if name_counts[base] > 1:
+            key = os.path.normpath(path)
+            if key not in seen:
+                stem, ext = os.path.splitext(base)
+                rel_path = os.path.normpath(path).lstrip('./')
+                path_suffix = rel_path.replace('/', '_').replace('\\', '_')
+                newname = f"{path_suffix}"
+                seen[key] = newname
+            else:
+                newname = seen[key]
         else:
-            newfigname = figname
+            newname = base
 
-        newincludegraphics = m.group(1) + newfigname + m.group(3)
-        figlist.append((figname, figpath, newfigname))
-        return newincludegraphics
+        figlist.append((base, dirpath, newname))
+        return f"{prefix}{newname}{suffix}"
 
-    source = re.sub(r'(\\includegraphics.*{)(.*)(})', repl, source, flags=re.DOTALL)
-
+    source = re.sub(r'(\\includegraphics(?:\[[^\]]*\])?{)(.*?)(})', repl, source, flags=re.DOTALL)
     return figlist, source, graphicspaths
+
 
 
 def flatten(source):
